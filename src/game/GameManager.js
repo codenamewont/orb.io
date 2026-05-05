@@ -1,14 +1,15 @@
-import { World } from './World.js';
+import { World } from "./World.js";
+import { Player } from "./Player.js";
 import {
   drawStartScreen,
   drawPlayingHUD,
   drawGameOverScreen,
-} from '../ui/hud.js';
+} from "../ui/hud.js";
 
 export const GameState = {
-  MENU: 'MENU',
-  PLAYING: 'PLAYING',
-  GAME_OVER: 'GAME_OVER',
+  MENU: "MENU",
+  PLAYING: "PLAYING",
+  GAME_OVER: "GAME_OVER",
 };
 
 export class GameManager {
@@ -21,18 +22,54 @@ export class GameManager {
     this.threeContainer = threeContainer;
     /** @type {World | null} */
     this.world = null;
+    /** @type {Player | null} */
+    this.player = null;
     this.state = GameState.MENU;
     this.score = 0;
-    this.bestScore = Number(localStorage.getItem('orb-best') ?? 0) || 0;
+    this.bestScore = Number(localStorage.getItem("orb-best") ?? 0) || 0;
+
+    this._mouseClientX =
+      typeof window !== "undefined" ? window.innerWidth * 0.5 : 0;
+    this._mouseClientY =
+      typeof window !== "undefined" ? window.innerHeight * 0.5 : 0;
+    /** @param {PointerEvent} e */
+    this._onPointerMove = (e) => {
+      this._mouseClientX = e.clientX;
+      this._mouseClientY = e.clientY;
+    };
+
+    /** Space held (boost); keyup/blur clears so it is never stuck on. */
+    this._spaceHeld = false;
+    /** @param {KeyboardEvent} e */
+    this._onKeyDown = (e) => {
+      if (e.code === "Space") this._spaceHeld = true;
+    };
+    /** @param {KeyboardEvent} e */
+    this._onKeyUp = (e) => {
+      if (e.code === "Space") this._spaceHeld = false;
+    };
+    this._onWindowBlur = () => {
+      this._spaceHeld = false;
+    };
   }
 
   init() {
     this.world = new World(this.threeContainer);
+    this.threeContainer.addEventListener("pointermove", this._onPointerMove, {
+      passive: true,
+    });
+    window.addEventListener("keydown", this._onKeyDown);
+    window.addEventListener("keyup", this._onKeyUp);
+    window.addEventListener("blur", this._onWindowBlur);
   }
 
   start() {
+    if (!this.world) return;
     this.state = GameState.PLAYING;
     this.score = 0;
+    this.player?.dispose();
+    this.player = new Player(this.world.scene);
+    this.player.reset();
   }
 
   restart() {
@@ -43,7 +80,7 @@ export class GameManager {
     this.state = GameState.GAME_OVER;
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
-      localStorage.setItem('orb-best', String(this.bestScore));
+      localStorage.setItem("orb-best", String(this.bestScore));
     }
   }
 
@@ -52,8 +89,15 @@ export class GameManager {
    */
   update(dt) {
     if (this.state !== GameState.PLAYING) return;
-    void dt;
-    // Player / orbs / collisions will run here.
+    if (this.player && this.world) {
+      const ground = this.world.screenToGround(
+        this._mouseClientX,
+        this._mouseClientY,
+      );
+      const boost = this._spaceHeld;
+      this.player.update(dt, { groundPoint: ground, boost });
+      this.world.updateCamera(this.player, dt);
+    }
   }
 
   renderThree() {
@@ -94,8 +138,8 @@ export class GameManager {
     const activate =
       keyCode === 13 || // Enter
       keyCode === 32 || // Space
-      key === ' ' ||
-      key === '\n';
+      key === " " ||
+      key === "\n";
     if (!activate) return;
     if (this.state === GameState.MENU) this.start();
     else if (this.state === GameState.GAME_OVER) this.restart();
