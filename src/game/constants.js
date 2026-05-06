@@ -28,3 +28,13 @@ export const PLAYER = {
   trailSampleDistance: 0.18,
   maxTrailSamples: 4000,
 };
+
+export const ORB = {
+  count: 10,
+  radius: 0.3,
+  color: 0xffcc44,
+  emissive: 0x664400,
+  scoreValue: 1,
+  pickupPadding: 0.06,
+  minSpawnSeparation: 2.8,
+};

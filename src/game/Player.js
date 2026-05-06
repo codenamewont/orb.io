@@ -68,6 +68,19 @@ export class Player {
     this._syncBodyBehindDirection();
   }
 
+  /** Adds one body segment (shared geometry/material with existing body). */
+  grow() {
+    if (this.bodyMeshes.length === 0) return;
+    const template = this.bodyMeshes[0];
+    const m = new THREE.Mesh(template.geometry, template.material);
+    m.castShadow = true;
+    const last = this.bodyMeshes[this.bodyMeshes.length - 1];
+    m.position.copy(last.position);
+    this.bodyMeshes.push(m);
+    this.segmentCount = this.bodyMeshes.length;
+    this.scene.add(m);
+  }
+
   /** Place body spheres along -direction from the head. */
   _syncBodyBehindDirection() {
     for (let i = 0; i < this.bodyMeshes.length; i++) {

@@ -1,5 +1,7 @@
 import { World } from "./World.js";
 import { Player } from "./Player.js";
+import { Orb } from "./Orb.js";
+import { ORB } from "./constants.js";
 import {
   drawStartScreen,
   drawPlayingHUD,
@@ -24,6 +26,8 @@ export class GameManager {
     this.world = null;
     /** @type {Player | null} */
     this.player = null;
+    /** @type {Orb[]} */
+    this.orbs = [];
     this.state = GameState.MENU;
     this.score = 0;
     this.bestScore = Number(localStorage.getItem("orb-best") ?? 0) || 0;
@@ -70,6 +74,24 @@ export class GameManager {
     this.player?.dispose();
     this.player = new Player(this.world.scene);
     this.player.reset();
+
+    if (this.orbs.length === 0) {
+      for (let i = 0; i < ORB.count; i++) {
+        this.orbs.push(new Orb(this.world.scene));
+      }
+    }
+    this._layoutOrbs();
+  }
+
+  /** Spread orbs on the floor away from the head and each other. */
+  _layoutOrbs() {
+    if (!this.player) return;
+    /** @type {import("three").Vector3[]} */
+    const avoid = [this.player.head];
+    for (const orb of this.orbs) {
+      orb.respawn(avoid, ORB.minSpawnSeparation);
+      avoid.push(orb.mesh.position);
+    }
   }
 
   restart() {
@@ -96,7 +118,22 @@ export class GameManager {
       );
       const boost = this._spaceHeld;
       this.player.update(dt, { groundPoint: ground, boost });
+      this._updateOrbs();
       this.world.updateCamera(this.player, dt);
+    }
+  }
+
+  _updateOrbs() {
+    if (!this.player) return;
+    for (const orb of this.orbs) {
+      if (!orb.tryCollect(this.player.head)) continue;
+      this.score += ORB.scoreValue;
+      this.player.grow();
+      const avoid = [this.player.head];
+      for (const o of this.orbs) {
+        if (o !== orb) avoid.push(o.mesh.position);
+      }
+      orb.respawn(avoid, ORB.minSpawnSeparation);
     }
   }
 
