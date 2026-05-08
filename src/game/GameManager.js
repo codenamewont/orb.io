@@ -3,7 +3,14 @@ import { World } from "./World.js";
 import { Player } from "./Player.js";
 import { Orb } from "./Orb.js";
 import { Obstacle } from "./Obstacle.js";
-import { BODY_SHOT, COLLISION, OBSTACLE, ORB, PLAYER } from "./constants.js";
+import {
+  BODY_SHOT,
+  COLLISION,
+  OBSTACLE,
+  ORB,
+  PLAYER,
+  SCORE,
+} from "./constants.js";
 import { headOutsideArenaXZ, spheresOverlap } from "./collision.js";
 import {
   drawStartScreen,
@@ -181,6 +188,7 @@ export class GameManager {
     if (this._bodyShot.active) return;
     if (this._bodyShotCooldown > 0) return;
     if (!this.player.sacrificeTailSegment()) return;
+    this.score = Math.max(0, this.score - SCORE.bodyShotCost);
 
     const dir = this.player.direction.clone();
     dir.y = 0;
@@ -239,6 +247,7 @@ export class GameManager {
         )
       ) {
         obs.takeHit();
+        this.score += SCORE.obstacleHitReward;
         this._endBodyShot();
         return;
       }

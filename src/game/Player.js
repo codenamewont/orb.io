@@ -47,15 +47,16 @@ export class Player {
     this.segmentCount = PLAYER.initialBodySegments;
     /** @type {THREE.Mesh[]} */
     this.bodyMeshes = [];
-    const bodyMat = new THREE.MeshStandardMaterial({
+    /** Body segments reuse this mesh asset so grow() works after length becomes zero. */
+    this._bodyMat = new THREE.MeshStandardMaterial({
       color: 0x4488cc,
       roughness: 0.4,
       metalness: 0.1,
       emissive: 0x0a1520,
     });
-    const bodyGeo = new THREE.SphereGeometry(PLAYER.segmentRadius, 18, 14);
+    this._bodyGeo = new THREE.SphereGeometry(PLAYER.segmentRadius, 18, 14);
     for (let i = 0; i < this.segmentCount; i++) {
-      const m = new THREE.Mesh(bodyGeo, bodyMat);
+      const m = new THREE.Mesh(this._bodyGeo, this._bodyMat);
       m.castShadow = true;
       this.bodyMeshes.push(m);
       this.scene.add(m);
@@ -78,12 +79,15 @@ export class Player {
 
   /** Adds one body segment (shared geometry/material with existing body). */
   grow() {
-    if (this.bodyMeshes.length === 0) return;
-    const template = this.bodyMeshes[0];
-    const m = new THREE.Mesh(template.geometry, template.material);
+    const m = new THREE.Mesh(this._bodyGeo, this._bodyMat);
     m.castShadow = true;
-    const last = this.bodyMeshes[this.bodyMeshes.length - 1];
-    m.position.copy(last.position);
+    if (this.bodyMeshes.length === 0) {
+      this._pointBehindHead(PLAYER.segmentSpacing, _segPos);
+      m.position.copy(_segPos);
+    } else {
+      const last = this.bodyMeshes[this.bodyMeshes.length - 1];
+      m.position.copy(last.position);
+    }
     this.bodyMeshes.push(m);
     this.segmentCount = this.bodyMeshes.length;
     this.scene.add(m);
@@ -235,12 +239,8 @@ export class Player {
     for (const m of this.bodyMeshes) {
       this.scene.remove(m);
     }
-    if (this.bodyMeshes.length > 0) {
-      this.bodyMeshes[0].geometry.dispose();
-      /** @type {THREE.Material} */
-      const mat = this.bodyMeshes[0].material;
-      mat.dispose();
-    }
     this.bodyMeshes.length = 0;
+    this._bodyGeo.dispose();
+    this._bodyMat.dispose();
   }
 }

@@ -48,6 +48,11 @@ export const ORB = {
   minSpawnSeparation: 2.8,
 };
 
+export const SCORE = {
+  bodyShotCost: 1,
+  obstacleHitReward: 2,
+};
+
 export const OBSTACLE = {
   count: 12,
   radius: 0.85,
