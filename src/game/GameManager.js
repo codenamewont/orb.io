@@ -1,8 +1,9 @@
+import * as THREE from "three";
 import { World } from "./World.js";
 import { Player } from "./Player.js";
 import { Orb } from "./Orb.js";
 import { Obstacle } from "./Obstacle.js";
-import { COLLISION, OBSTACLE, ORB, PLAYER } from "./constants.js";
+import { BODY_SHOT, COLLISION, OBSTACLE, ORB, PLAYER } from "./constants.js";
 import { headOutsideArenaXZ, spheresOverlap } from "./collision.js";
 import {
   drawStartScreen,
@@ -36,6 +37,16 @@ export class GameManager {
     this.score = 0;
     this.bestScore = Number(localStorage.getItem("orb-best") ?? 0) || 0;
 
+    /** @type {{ active: boolean; pos: THREE.Vector3; dir: THREE.Vector3; traveled: number; mesh: THREE.Mesh | null }} */
+    this._bodyShot = {
+      active: false,
+      pos: new THREE.Vector3(),
+      dir: new THREE.Vector3(0, 0, 1),
+      traveled: 0,
+      mesh: null,
+    };
+    this._bodyShotCooldown = 0;
+
     this._mouseClientX =
       typeof window !== "undefined" ? window.innerWidth * 0.5 : 0;
     this._mouseClientY =
@@ -51,6 +62,7 @@ export class GameManager {
     /** @param {KeyboardEvent} e */
     this._onKeyDown = (e) => {
       if (e.code === "Space") this._spaceHeld = true;
+      if (e.code === "KeyA" && !e.repeat) this._tryFireBodyShot();
     };
     /** @param {KeyboardEvent} e */
     this._onKeyUp = (e) => {
@@ -75,6 +87,8 @@ export class GameManager {
     if (!this.world) return;
     this.state = GameState.PLAYING;
     this.score = 0;
+    this._endBodyShot();
+    this._bodyShotCooldown = 0;
     this.player?.dispose();
     this.player = new Player(this.world.scene);
     this.player.reset();
@@ -103,6 +117,7 @@ export class GameManager {
     /** @type {import("three").Vector3[]} */
     const avoid = [this.player.head];
     for (const obs of this.obstacles) {
+      obs.revive();
       obs.placeRandom(avoid, OBSTACLE.minSpawnSeparation);
       avoid.push(obs.mesh.position);
     }
@@ -113,7 +128,9 @@ export class GameManager {
     if (!this.player) return;
     /** @type {import("three").Vector3[]} */
     const avoid = [this.player.head];
-    for (const obs of this.obstacles) avoid.push(obs.mesh.position);
+    for (const obs of this.obstacles) {
+      if (obs.isActive()) avoid.push(obs.mesh.position);
+    }
     for (const orb of this.orbs) {
       orb.respawn(avoid, ORB.minSpawnSeparation);
       avoid.push(orb.mesh.position);
@@ -125,6 +142,7 @@ export class GameManager {
   }
 
   onGameOver() {
+    this._endBodyShot();
     this.state = GameState.GAME_OVER;
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
@@ -138,6 +156,10 @@ export class GameManager {
   update(dt) {
     if (this.state !== GameState.PLAYING) return;
     if (this.player && this.world) {
+      if (this._bodyShotCooldown > 0) {
+        this._bodyShotCooldown = Math.max(0, this._bodyShotCooldown - dt);
+      }
+
       const ground = this.world.screenToGround(
         this._mouseClientX,
         this._mouseClientY,
@@ -149,8 +171,96 @@ export class GameManager {
         return;
       }
       this._updateOrbs();
+      this._updateBodyShot(dt);
       this.world.updateCamera(this.player, dt);
     }
+  }
+
+  _tryFireBodyShot() {
+    if (this.state !== GameState.PLAYING || !this.player || !this.world) return;
+    if (this._bodyShot.active) return;
+    if (this._bodyShotCooldown > 0) return;
+    if (!this.player.sacrificeTailSegment()) return;
+
+    const dir = this.player.direction.clone();
+    dir.y = 0;
+    if (dir.lengthSq() < 1e-8) dir.set(0, 0, 1);
+    else dir.normalize();
+
+    const pos = this.player.head.clone();
+    pos.y = PLAYER.y;
+    pos.addScaledVector(dir, PLAYER.headRadius + BODY_SHOT.startOffset);
+
+    const geo = new THREE.SphereGeometry(BODY_SHOT.radius, 14, 12);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x88ddff,
+      roughness: 0.35,
+      metalness: 0.2,
+      emissive: 0x113344,
+      emissiveIntensity: 0.5,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.position.copy(pos);
+    this.world.scene.add(mesh);
+
+    this._bodyShot.active = true;
+    this._bodyShot.pos.copy(pos);
+    this._bodyShot.dir.copy(dir);
+    this._bodyShot.traveled = 0;
+    this._bodyShot.mesh = mesh;
+    this._bodyShotCooldown = BODY_SHOT.cooldown;
+  }
+
+  _updateBodyShot(dt) {
+    if (!this._bodyShot.active || !this.world) return;
+
+    const step = BODY_SHOT.speed * dt;
+    this._bodyShot.traveled += step;
+    this._bodyShot.pos.addScaledVector(this._bodyShot.dir, step);
+    this._bodyShot.mesh.position.copy(this._bodyShot.pos);
+
+    if (
+      this._bodyShot.traveled > BODY_SHOT.maxRange ||
+      headOutsideArenaXZ(this._bodyShot.pos)
+    ) {
+      this._endBodyShot();
+      return;
+    }
+
+    for (const obs of this.obstacles) {
+      if (!obs.isActive()) continue;
+      if (
+        spheresOverlap(
+          this._bodyShot.pos,
+          BODY_SHOT.radius,
+          obs.mesh.position,
+          obs.radius,
+        )
+      ) {
+        obs.takeHit();
+        this._endBodyShot();
+        return;
+      }
+    }
+  }
+
+  _endBodyShot() {
+    if (!this._bodyShot.active || !this.world) {
+      this._bodyShot.active = false;
+      this._bodyShot.mesh = null;
+      return;
+    }
+    const m = this._bodyShot.mesh;
+    if (m) {
+      this.world.scene.remove(m);
+      m.geometry.dispose();
+      /** @type {THREE.Material} */
+      const mat = m.material;
+      mat.dispose();
+    }
+    this._bodyShot.active = false;
+    this._bodyShot.mesh = null;
   }
 
   /**
@@ -163,6 +273,7 @@ export class GameManager {
     if (headOutsideArenaXZ(head)) return true;
 
     for (const obs of this.obstacles) {
+      if (!obs.isActive()) continue;
       if (
         spheresOverlap(head, PLAYER.headRadius, obs.mesh.position, obs.radius)
       ) {
@@ -201,7 +312,9 @@ export class GameManager {
       for (const o of this.orbs) {
         if (o !== orb) avoid.push(o.mesh.position);
       }
-      for (const obs of this.obstacles) avoid.push(obs.mesh.position);
+      for (const obs of this.obstacles) {
+        if (obs.isActive()) avoid.push(obs.mesh.position);
+      }
       orb.respawn(avoid, ORB.minSpawnSeparation);
     }
   }

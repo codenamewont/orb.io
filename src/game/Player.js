@@ -64,6 +64,18 @@ export class Player {
     this._syncBodyBehindDirection();
   }
 
+  /**
+   * Removes the tail segment for a body shot.
+   * @returns {boolean}
+   */
+  sacrificeTailSegment() {
+    if (this.bodyMeshes.length === 0) return false;
+    const last = this.bodyMeshes.pop();
+    this.scene.remove(last);
+    this.segmentCount = this.bodyMeshes.length;
+    return true;
+  }
+
   /** Adds one body segment (shared geometry/material with existing body). */
   grow() {
     if (this.bodyMeshes.length === 0) return;

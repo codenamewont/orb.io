@@ -8,7 +8,8 @@ export class Obstacle {
   constructor(scene) {
     this.scene = scene;
     this.radius = OBSTACLE.radius;
-    const geo = new THREE.SphereGeometry(this.radius, 18, 14);
+    this.hitsRemaining = OBSTACLE.hitsToDestroy;
+    const geo = new THREE.SphereGeometry(OBSTACLE.radius, 18, 14);
     const mat = new THREE.MeshStandardMaterial({
       color: OBSTACLE.color,
       roughness: 0.45,
@@ -21,6 +22,36 @@ export class Obstacle {
     this.mesh.receiveShadow = true;
     this.mesh.position.y = PLAYER.y;
     this.scene.add(this.mesh);
+  }
+
+  isActive() {
+    return this.hitsRemaining > 0;
+  }
+
+  revive() {
+    this.hitsRemaining = OBSTACLE.hitsToDestroy;
+    this.mesh.visible = true;
+    this._syncRadiusScale();
+  }
+
+  _syncRadiusScale() {
+    const t = this.hitsRemaining / OBSTACLE.hitsToDestroy;
+    this.radius = OBSTACLE.radius * t;
+    const s = Math.max(t, 1e-3);
+    this.mesh.scale.setScalar(s);
+  }
+
+  /** shrinks or removes the obstacle. */
+  takeHit() {
+    if (!this.isActive()) return;
+    this.hitsRemaining -= 1;
+    if (this.hitsRemaining <= 0) {
+      this.radius = 0;
+      this.mesh.visible = false;
+      this.mesh.scale.setScalar(1e-3);
+    } else {
+      this._syncRadiusScale();
+    }
   }
 
   dispose() {
@@ -37,7 +68,7 @@ export class Obstacle {
    * @param {number} minSeparationXZ
    */
   placeRandom(avoidCenters, minSeparationXZ) {
-    const half = WORLD.floorSize * 0.5 - this.radius - 1;
+    const half = WORLD.floorSize * 0.5 - OBSTACLE.radius - 1;
     const minSq = minSeparationXZ * minSeparationXZ;
 
     for (let attempt = 0; attempt < 64; attempt++) {

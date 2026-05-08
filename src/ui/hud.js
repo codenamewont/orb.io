@@ -6,10 +6,13 @@ export function drawStartScreen(p) {
   p.fill(240, 245, 255);
   p.textAlign(p.CENTER, p.CENTER);
   p.textSize(42);
-  p.text('Orb.io', p.width / 2, p.height / 2 - 36);
+  p.text("Orb.io", p.width / 2, p.height / 2 - 36);
   p.textSize(18);
   p.fill(200, 205, 220);
-  p.text('Press SPACE or ENTER to play', p.width / 2, p.height / 2 + 12);
+  p.text("Press SPACE or ENTER to play", p.width / 2, p.height / 2 + 12);
+  p.textSize(15);
+  p.fill(170, 175, 200);
+  p.text("A: segment shot vs obstacles", p.width / 2, p.height / 2 + 42);
   p.pop();
 }
 
@@ -43,12 +46,12 @@ export function drawGameOverScreen(p, score, best) {
   p.fill(255, 90, 90);
   p.textAlign(p.CENTER, p.CENTER);
   p.textSize(40);
-  p.text('Game Over', p.width / 2, p.height / 2 - 48);
+  p.text("Game Over", p.width / 2, p.height / 2 - 48);
   p.fill(235, 238, 250);
   p.textSize(20);
   p.text(`Score: ${score}   Best: ${best}`, p.width / 2, p.height / 2);
   p.textSize(18);
   p.fill(190, 195, 215);
-  p.text('Press SPACE or ENTER to restart', p.width / 2, p.height / 2 + 40);
+  p.text("Press SPACE or ENTER to restart", p.width / 2, p.height / 2 + 40);
   p.pop();
 }

@@ -29,6 +29,15 @@ export const PLAYER = {
   maxTrailSamples: 4000,
 };
 
+/** Sacrifice one tail segment; projectile flies along facing (A key). */
+export const BODY_SHOT = {
+  speed: 28,
+  radius: 0.28,
+  maxRange: 48,
+  cooldown: 0.4,
+  startOffset: 0.55,
+};
+
 export const ORB = {
   count: 10,
   radius: 0.3,
@@ -45,6 +54,8 @@ export const OBSTACLE = {
   color: 0x8844aa,
   emissive: 0x221133,
   minSpawnSeparation: 4.5,
+  /** Hits from body shots before the obstacle is destroyed. */
+  hitsToDestroy: 3,
 };
 
 /** First body segment indices (0-based) skipped for head vs self collision. */
