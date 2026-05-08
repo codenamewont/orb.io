@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PLAYER, WORLD } from "./constants.js";
+import { PLAYER } from "./constants.js";
 
 const _move = new THREE.Vector3();
 const _segPos = new THREE.Vector3();
@@ -31,10 +31,6 @@ export class Player {
     /** @type {THREE.Vector3[]} A list of past positions (oldest → newest). */
     this.trail = [];
     this._lastSamplePos = new THREE.Vector3().copy(this.head);
-
-    const half = WORLD.floorSize * 0.5 - PLAYER.headRadius - 0.5;
-    this._boundsMin = new THREE.Vector3(-half, PLAYER.y, -half);
-    this._boundsMax = new THREE.Vector3(half, PLAYER.y, half);
 
     const headGeo = new THREE.SphereGeometry(PLAYER.headRadius, 20, 16);
     const headMat = new THREE.MeshStandardMaterial({
@@ -119,7 +115,6 @@ export class Player {
     _move.copy(this.direction).multiplyScalar(this.speed * dt);
     this.head.add(_move);
     this.head.y = PLAYER.y;
-    this.head.clamp(this._boundsMin, this._boundsMax);
 
     const d2 = PLAYER.trailSampleDistance * PLAYER.trailSampleDistance;
     while (this.head.distanceToSquared(this._lastSamplePos) >= d2) {

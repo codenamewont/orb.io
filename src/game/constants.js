@@ -38,3 +38,16 @@ export const ORB = {
   pickupPadding: 0.06,
   minSpawnSeparation: 2.8,
 };
+
+export const OBSTACLE = {
+  count: 12,
+  radius: 0.85,
+  color: 0x8844aa,
+  emissive: 0x221133,
+  minSpawnSeparation: 4.5,
+};
+
+/** First body segment indices (0-based) skipped for head vs self collision. */
+export const COLLISION = {
+  selfBodySkipCount: 3,
+};

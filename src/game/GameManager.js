@@ -1,7 +1,9 @@
 import { World } from "./World.js";
 import { Player } from "./Player.js";
 import { Orb } from "./Orb.js";
-import { ORB } from "./constants.js";
+import { Obstacle } from "./Obstacle.js";
+import { COLLISION, OBSTACLE, ORB, PLAYER } from "./constants.js";
+import { headOutsideArenaXZ, spheresOverlap } from "./collision.js";
 import {
   drawStartScreen,
   drawPlayingHUD,
@@ -28,6 +30,8 @@ export class GameManager {
     this.player = null;
     /** @type {Orb[]} */
     this.orbs = [];
+    /** @type {Obstacle[]} */
+    this.obstacles = [];
     this.state = GameState.MENU;
     this.score = 0;
     this.bestScore = Number(localStorage.getItem("orb-best") ?? 0) || 0;
@@ -80,14 +84,36 @@ export class GameManager {
         this.orbs.push(new Orb(this.world.scene));
       }
     }
+    this._layoutObstacles();
     this._layoutOrbs();
   }
 
-  /** Spread orbs on the floor away from the head and each other. */
+  // Same obstacle objects every time. Only their positions change in start().
+  _ensureObstacles() {
+    if (!this.world) return;
+    if (this.obstacles.length > 0) return;
+    for (let i = 0; i < OBSTACLE.count; i++) {
+      this.obstacles.push(new Obstacle(this.world.scene));
+    }
+  }
+
+  _layoutObstacles() {
+    if (!this.player) return;
+    this._ensureObstacles();
+    /** @type {import("three").Vector3[]} */
+    const avoid = [this.player.head];
+    for (const obs of this.obstacles) {
+      obs.placeRandom(avoid, OBSTACLE.minSpawnSeparation);
+      avoid.push(obs.mesh.position);
+    }
+  }
+
+  /** Spread orbs on the floor away from the head, obstacles, and each other. */
   _layoutOrbs() {
     if (!this.player) return;
     /** @type {import("three").Vector3[]} */
     const avoid = [this.player.head];
+    for (const obs of this.obstacles) avoid.push(obs.mesh.position);
     for (const orb of this.orbs) {
       orb.respawn(avoid, ORB.minSpawnSeparation);
       avoid.push(orb.mesh.position);
@@ -118,9 +144,51 @@ export class GameManager {
       );
       const boost = this._spaceHeld;
       this.player.update(dt, { groundPoint: ground, boost });
+      if (this._checkFatalCollisions()) {
+        this.onGameOver();
+        return;
+      }
       this._updateOrbs();
       this.world.updateCamera(this.player, dt);
     }
+  }
+
+  /**
+   * @returns {boolean} true if the player should die this frame
+   */
+  _checkFatalCollisions() {
+    if (!this.player) return false;
+    const head = this.player.head;
+
+    if (headOutsideArenaXZ(head)) return true;
+
+    for (const obs of this.obstacles) {
+      if (
+        spheresOverlap(head, PLAYER.headRadius, obs.mesh.position, obs.radius)
+      ) {
+        return true;
+      }
+    }
+
+    for (
+      let i = COLLISION.selfBodySkipCount;
+      i < this.player.bodyMeshes.length;
+      i++
+    ) {
+      const seg = this.player.bodyMeshes[i];
+      if (
+        spheresOverlap(
+          head,
+          PLAYER.headRadius,
+          seg.position,
+          PLAYER.segmentRadius,
+        )
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   _updateOrbs() {
@@ -133,6 +201,7 @@ export class GameManager {
       for (const o of this.orbs) {
         if (o !== orb) avoid.push(o.mesh.position);
       }
+      for (const obs of this.obstacles) avoid.push(obs.mesh.position);
       orb.respawn(avoid, ORB.minSpawnSeparation);
     }
   }

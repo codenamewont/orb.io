@@ -1,3 +1,5 @@
+import { PLAYER, WORLD } from "./constants.js";
+
 /**
  * @param {THREE.Vector3} a
  * @param {THREE.Vector3} b
@@ -5,6 +7,16 @@
  */
 export function distance3(a, b) {
   return a.distanceTo(b);
+}
+
+/**
+ * Head left the playable XZ bounds (matches former Player clamp margin).
+ * @param {THREE.Vector3} head
+ * @returns {boolean}
+ */
+export function headOutsideArenaXZ(head) {
+  const half = WORLD.floorSize * 0.5 - PLAYER.headRadius - 0.5;
+  return Math.abs(head.x) > half || Math.abs(head.z) > half;
 }
 
 /**
