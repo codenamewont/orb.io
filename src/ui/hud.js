@@ -47,6 +47,9 @@ export function drawPlayingHUD(p, score, best) {
  */
 export function drawGameOverScreen(p, score, best) {
   p.push();
+  p.noStroke();
+  p.fill(0, 0, 0, 170);
+  p.rect(0, 0, p.width, p.height);
   p.fill(255, 90, 90);
   p.textAlign(p.CENTER, p.CENTER);
   p.textSize(40);
