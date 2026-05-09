@@ -23,6 +23,13 @@ import {
   getStoredBestForNickname,
   recordLeaderboardScore,
 } from "./leaderboard.js";
+import {
+  playBodyShotFire,
+  playBodyShotHit,
+  playGameOver,
+  playOrbCollect,
+  preloadGameAudio,
+} from "../audio/sfx.js";
 
 export const GameState = {
   MENU: "MENU",
@@ -203,6 +210,7 @@ export class GameManager {
     if (!this.world) return;
     if (this._nicknameInput) this._nicknameSnapshot = this._nicknameInput.value;
     this._sessionNickname = this._readNicknameForGame();
+    preloadGameAudio();
     this.state = GameState.PLAYING;
     this.score = 0;
     this._endBodyShot();
@@ -274,6 +282,7 @@ export class GameManager {
   onGameOver() {
     this._endBodyShot();
     this.state = GameState.GAME_OVER;
+    playGameOver();
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
       localStorage.setItem("orb-best", String(this.bestScore));
@@ -344,6 +353,7 @@ export class GameManager {
     this._bodyShot.traveled = 0;
     this._bodyShot.mesh = mesh;
     this._bodyShotCooldown = BODY_SHOT.cooldown;
+    playBodyShotFire();
   }
 
   _updateBodyShot(dt) {
@@ -372,6 +382,7 @@ export class GameManager {
           obs.radius,
         )
       ) {
+        playBodyShotHit();
         obs.takeHit();
         this.score += SCORE.obstacleHitReward;
         this._endBodyShot();
@@ -441,6 +452,7 @@ export class GameManager {
     if (!this.player) return;
     for (const orb of this.orbs) {
       if (!orb.tryCollect(this.player.head)) continue;
+      playOrbCollect();
       this.score += ORB.scoreValue;
       this.player.grow();
       const avoid = [this.player.head];
