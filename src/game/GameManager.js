@@ -201,11 +201,11 @@ export class GameManager {
 
     const geo = new THREE.SphereGeometry(BODY_SHOT.radius, 14, 12);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x88ddff,
-      roughness: 0.35,
-      metalness: 0.2,
-      emissive: 0x113344,
-      emissiveIntensity: 0.5,
+      color: BODY_SHOT.projectileColor,
+      roughness: 0.32,
+      metalness: 0.22,
+      emissive: BODY_SHOT.projectileEmissive,
+      emissiveIntensity: BODY_SHOT.projectileEmissiveIntensity,
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;

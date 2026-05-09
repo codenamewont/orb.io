@@ -15,7 +15,7 @@ export class Obstacle {
       roughness: 0.45,
       metalness: 0.2,
       emissive: OBSTACLE.emissive,
-      emissiveIntensity: 0.25,
+      emissiveIntensity: OBSTACLE.emissiveIntensity,
     });
     this.mesh = new THREE.Mesh(geo, mat);
     this.mesh.castShadow = true;

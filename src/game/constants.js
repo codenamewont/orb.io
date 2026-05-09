@@ -2,6 +2,16 @@ export const WORLD = {
   floorSize: 80,
   cameraHeight: 18,
   cameraDistance: 22,
+  sceneBackground: 0x04030a,
+  ambientColor: 0x5533aa,
+  ambientIntensity: 0.4,
+  sunColor: 0xa8d8ff,
+  sunIntensity: 0.68,
+  floorColor: 0x0f0c18,
+  floorRoughness: 0.9,
+  floorMetalness: 0.08,
+  gridColorPrimary: 0x00e8c8,
+  gridColorSecondary: 0xff0a8c,
 };
 
 // The camera follows the player's position,
@@ -16,6 +26,16 @@ export const CAMERA = {
   snapDistance: 35,
 };
 
+export const BLOOM = {
+  strength: 0.46,
+  radius: 0.28,
+  threshold: 0.34,
+};
+
+export const RENDER = {
+  toneMappingExposure: 2.0,
+};
+
 export const PLAYER = {
   moveSpeed: 12,
   boostMoveSpeed: 21,
@@ -27,6 +47,12 @@ export const PLAYER = {
   initialBodySegments: 3,
   trailSampleDistance: 0.18,
   maxTrailSamples: 4000,
+  headColor: 0x78f8ff,
+  headEmissive: 0x40e8f5,
+  headEmissiveIntensity: 0.38,
+  bodyColor: 0x56b8ff,
+  bodyEmissive: 0x3090e8,
+  bodyEmissiveIntensity: 0.32,
 };
 
 /** Sacrifice one tail segment; projectile flies along facing (A key). */
@@ -36,13 +62,17 @@ export const BODY_SHOT = {
   maxRange: 48,
   cooldown: 0.4,
   startOffset: 0.55,
+  projectileColor: 0xcfffff,
+  projectileEmissive: 0x55ffff,
+  projectileEmissiveIntensity: 0.42,
 };
 
 export const ORB = {
   count: 10,
   radius: 0.3,
-  color: 0xffcc44,
-  emissive: 0x664400,
+  color: 0xffee55,
+  emissive: 0xffcc22,
+  emissiveIntensity: 0.44,
   scoreValue: 1,
   pickupPadding: 0.06,
   minSpawnSeparation: 2.8,
@@ -56,8 +86,9 @@ export const SCORE = {
 export const OBSTACLE = {
   count: 12,
   radius: 0.85,
-  color: 0x8844aa,
-  emissive: 0x221133,
+  color: 0xc86bff,
+  emissive: 0x9a3dff,
+  emissiveIntensity: 0.4,
   minSpawnSeparation: 4.5,
   /** Hits from body shots before the obstacle is destroyed. */
   hitsToDestroy: 3,

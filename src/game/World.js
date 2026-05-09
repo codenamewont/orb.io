@@ -1,5 +1,9 @@
 import * as THREE from "three";
-import { WORLD, CAMERA } from "./constants.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { BLOOM, CAMERA, RENDER, WORLD } from "./constants.js";
 
 export class World {
   /**
@@ -8,7 +12,7 @@ export class World {
   constructor(container) {
     this.container = container;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a12);
+    this.scene.background = new THREE.Color(WORLD.sceneBackground);
 
     const w = container.clientWidth || window.innerWidth;
     const h = container.clientHeight || window.innerHeight;
@@ -31,12 +35,28 @@ export class World {
     this.renderer.setSize(w, h);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = RENDER.toneMappingExposure;
     container.appendChild(this.renderer.domElement);
 
-    const ambient = new THREE.AmbientLight(0x7a7a90, 0.85);
+    this._composer = new EffectComposer(this.renderer);
+    this._composer.addPass(new RenderPass(this.scene, this.camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(w, h),
+      BLOOM.strength,
+      BLOOM.radius,
+      BLOOM.threshold,
+    );
+    this._composer.addPass(bloomPass);
+    this._composer.addPass(new OutputPass());
+
+    const ambient = new THREE.AmbientLight(
+      WORLD.ambientColor,
+      WORLD.ambientIntensity,
+    );
     this.scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.05);
+    const sun = new THREE.DirectionalLight(WORLD.sunColor, WORLD.sunIntensity);
     sun.position.set(12, 24, 10);
     sun.castShadow = true;
     sun.shadow.mapSize.setScalar(2048);
@@ -48,9 +68,9 @@ export class World {
 
     const floorGeo = new THREE.PlaneGeometry(WORLD.floorSize, WORLD.floorSize);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x1e1e32,
-      roughness: 0.92,
-      metalness: 0.05,
+      color: WORLD.floorColor,
+      roughness: WORLD.floorRoughness,
+      metalness: WORLD.floorMetalness,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -58,7 +78,12 @@ export class World {
     this.scene.add(floor);
 
     /** @type {THREE.GridHelper | null} */
-    this._grid = new THREE.GridHelper(WORLD.floorSize, 40, 0x3d3d55, 0x2a2a3d);
+    this._grid = new THREE.GridHelper(
+      WORLD.floorSize,
+      40,
+      WORLD.gridColorPrimary,
+      WORLD.gridColorSecondary,
+    );
     this._grid.position.y = 0.01;
     this.scene.add(this._grid);
   }
@@ -73,10 +98,12 @@ export class World {
     this.camera.aspect = width / Math.max(height, 1);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    this._composer.setPixelRatio(this.renderer.getPixelRatio());
+    this._composer.setSize(width, height);
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    this._composer.render();
   }
 
   /**

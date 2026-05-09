@@ -14,7 +14,7 @@ export class Orb {
       roughness: 0.35,
       metalness: 0.2,
       emissive: ORB.emissive,
-      emissiveIntensity: 0.45,
+      emissiveIntensity: ORB.emissiveIntensity,
     });
     this.mesh = new THREE.Mesh(geo, mat);
     this.mesh.castShadow = true;

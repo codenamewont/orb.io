@@ -34,10 +34,11 @@ export class Player {
 
     const headGeo = new THREE.SphereGeometry(PLAYER.headRadius, 20, 16);
     const headMat = new THREE.MeshStandardMaterial({
-      color: 0x66ccff,
-      roughness: 0.35,
-      metalness: 0.15,
-      emissive: 0x112233,
+      color: PLAYER.headColor,
+      roughness: 0.32,
+      metalness: 0.22,
+      emissive: PLAYER.headEmissive,
+      emissiveIntensity: PLAYER.headEmissiveIntensity,
     });
     this.headMesh = new THREE.Mesh(headGeo, headMat);
     this.headMesh.castShadow = true;
@@ -49,10 +50,11 @@ export class Player {
     this.bodyMeshes = [];
     /** Body segments reuse this mesh asset so grow() works after length becomes zero. */
     this._bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x4488cc,
-      roughness: 0.4,
-      metalness: 0.1,
-      emissive: 0x0a1520,
+      color: PLAYER.bodyColor,
+      roughness: 0.38,
+      metalness: 0.15,
+      emissive: PLAYER.bodyEmissive,
+      emissiveIntensity: PLAYER.bodyEmissiveIntensity,
     });
     this._bodyGeo = new THREE.SphereGeometry(PLAYER.segmentRadius, 18, 14);
     for (let i = 0; i < this.segmentCount; i++) {
