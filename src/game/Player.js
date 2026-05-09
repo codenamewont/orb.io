@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PLAYER } from "./constants.js";
+import { NICKNAME, PLAYER } from "./constants.js";
 
 const _move = new THREE.Vector3();
 const _segPos = new THREE.Vector3();
@@ -65,6 +65,73 @@ export class Player {
     }
 
     this._syncBodyBehindDirection();
+
+    /** @type {THREE.Sprite | null} */
+    this._nameSprite = null;
+    /** @type {HTMLCanvasElement | null} */
+    this._nameCanvas = null;
+    /** @type {THREE.CanvasTexture | null} */
+    this._nameTexture = null;
+  }
+
+  /**
+   * @param {string} text
+   */
+  setNickname(text) {
+    const trimmed = String(text).trim().slice(0, NICKNAME.maxLength);
+    const display = trimmed.length > 0 ? trimmed : NICKNAME.defaultName;
+    if (!this._nameSprite) this._createNameSprite();
+    this._redrawNameTexture(display);
+  }
+
+  _createNameSprite() {
+    this._nameCanvas = document.createElement("canvas");
+    this._nameCanvas.width = NICKNAME.textureWidth;
+    this._nameCanvas.height = NICKNAME.textureHeight;
+    this._nameTexture = new THREE.CanvasTexture(this._nameCanvas);
+    this._nameTexture.colorSpace = THREE.SRGBColorSpace;
+    this._nameTexture.flipY = true;
+    this._nameTexture.minFilter = THREE.LinearFilter;
+    this._nameTexture.magFilter = THREE.LinearFilter;
+    this._nameTexture.generateMipmaps = false;
+    const mat = new THREE.SpriteMaterial({
+      map: this._nameTexture,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      toneMapped: false,
+    });
+    this._nameSprite = new THREE.Sprite(mat);
+    const aspect = this._nameCanvas.width / this._nameCanvas.height;
+    const w = NICKNAME.spriteWorldWidth;
+    this._nameSprite.scale.set(w, w / aspect, 1);
+    this._nameSprite.renderOrder = 2;
+    this.scene.add(this._nameSprite);
+  }
+
+  /**
+   * @param {string} display
+   */
+  _redrawNameTexture(display) {
+    if (!this._nameCanvas || !this._nameTexture) return;
+    const ctx = this._nameCanvas.getContext("2d");
+    if (!ctx) return;
+    const W = this._nameCanvas.width;
+    const H = this._nameCanvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.font = `600 ${NICKNAME.fontPx}px "Pretendard Variable","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = NICKNAME.labelFill;
+    ctx.fillText(display, W * 0.5, H * 0.5);
+    this._nameTexture.needsUpdate = true;
+  }
+
+  /** Keeps the name tag above the head (sprite faces the camera). */
+  updateNameLabel() {
+    if (!this._nameSprite) return;
+    this._nameSprite.position.copy(this.head);
+    this._nameSprite.position.y += NICKNAME.labelOffsetY;
   }
 
   /**
@@ -244,5 +311,16 @@ export class Player {
     this.bodyMeshes.length = 0;
     this._bodyGeo.dispose();
     this._bodyMat.dispose();
+    if (this._nameSprite) {
+      this.scene.remove(this._nameSprite);
+      const mat = this._nameSprite.material;
+      /** @type {THREE.Texture | undefined} */
+      const map = mat.map;
+      map?.dispose();
+      mat.dispose();
+      this._nameSprite = null;
+    }
+    this._nameTexture = null;
+    this._nameCanvas = null;
   }
 }

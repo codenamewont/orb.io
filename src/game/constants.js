@@ -55,6 +55,18 @@ export const PLAYER = {
   bodyEmissiveIntensity: 0.32,
 };
 
+/** In-world name tag above the head (sprite + canvas texture). */
+export const NICKNAME = {
+  maxLength: 14,
+  defaultName: "Player",
+  labelOffsetY: 0.78,
+  spriteWorldWidth: 3.6,
+  textureWidth: 768,
+  textureHeight: 192,
+  fontPx: 78,
+  labelFill: "#8eb0c4",
+};
+
 /** Sacrifice one tail segment; projectile flies along facing (A key). */
 export const BODY_SHOT = {
   speed: 28,

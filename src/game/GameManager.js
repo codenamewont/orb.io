@@ -6,6 +6,7 @@ import { Obstacle } from "./Obstacle.js";
 import {
   BODY_SHOT,
   COLLISION,
+  NICKNAME,
   OBSTACLE,
   ORB,
   PLAYER,
@@ -17,6 +18,11 @@ import {
   drawPlayingHUD,
   drawGameOverScreen,
 } from "../ui/hud.js";
+import {
+  getLeaderboardTop10,
+  getStoredBestForNickname,
+  recordLeaderboardScore,
+} from "./leaderboard.js";
 
 export const GameState = {
   MENU: "MENU",
@@ -54,6 +60,19 @@ export class GameManager {
     };
     this._bodyShotCooldown = 0;
 
+    /** @type {HTMLInputElement | null} */
+    this._nicknameInput = null;
+    /** @type {HTMLElement | null} */
+    this._menuOverlay = null;
+    /** @type {HTMLButtonElement | null} */
+    this._startButton = null;
+    this._nicknameSnapshot = "";
+    /** Nickname used for the current run (leaderboard on game over). */
+    this._sessionNickname = "";
+
+    /** @type {HTMLOListElement | null} */
+    this._leaderboardList = null;
+
     this._mouseClientX =
       typeof window !== "undefined" ? window.innerWidth * 0.5 : 0;
     this._mouseClientY =
@@ -88,10 +107,102 @@ export class GameManager {
     window.addEventListener("keydown", this._onKeyDown);
     window.addEventListener("keyup", this._onKeyUp);
     window.addEventListener("blur", this._onWindowBlur);
+    this._wireNicknameMenu();
+  }
+
+  _wireNicknameMenu() {
+    this._nicknameInput = document.getElementById("nickname-input");
+    this._menuOverlay = document.getElementById("menu-overlay");
+    this._startButton = document.getElementById("start-button");
+    this._leaderboardList = document.getElementById("leaderboard-list");
+    if (this._startButton) {
+      this._startButton.addEventListener("click", () =>
+        this.tryStartFromMenu(),
+      );
+    }
+    if (this._nicknameInput) {
+      const syncNick = () => {
+        this._nicknameSnapshot = this._nicknameInput?.value ?? "";
+      };
+      syncNick();
+      this._nicknameInput.addEventListener("input", syncNick);
+      this._nicknameInput.addEventListener("compositionend", syncNick);
+      this._nicknameInput.addEventListener("keydown", (e) => {
+        if (e.code === "Enter") {
+          e.preventDefault();
+          this._nicknameSnapshot = this._nicknameInput?.value ?? "";
+          setTimeout(() => this.tryStartFromMenu(), 0);
+        }
+      });
+      queueMicrotask(() => {
+        if (this.state === GameState.MENU) this._nicknameInput?.focus();
+      });
+    }
+    this._refreshLeaderboardDOM();
+  }
+
+  _refreshLeaderboardDOM() {
+    const list = this._leaderboardList;
+    if (!list) return;
+    list.replaceChildren();
+    const rows = getLeaderboardTop10();
+    if (rows.length === 0) {
+      const li = document.createElement("li");
+      li.className = "leaderboard-empty";
+      li.textContent = "No scores yet — play to set a record.";
+      list.appendChild(li);
+      return;
+    }
+    for (let i = 0; i < rows.length; i++) {
+      const { name, score } = rows[i];
+      const li = document.createElement("li");
+      li.className = "leaderboard-row";
+      const rank = document.createElement("span");
+      rank.className = "lb-rank";
+      rank.textContent = String(i + 1);
+      const nameEl = document.createElement("span");
+      nameEl.className = "lb-name";
+      nameEl.textContent = name;
+      const scoreEl = document.createElement("span");
+      scoreEl.className = "lb-score";
+      scoreEl.textContent = String(score);
+      li.append(rank, nameEl, scoreEl);
+      list.appendChild(li);
+    }
+  }
+
+  tryStartFromMenu() {
+    if (this._nicknameInput) this._nicknameSnapshot = this._nicknameInput.value;
+    if (this.state === GameState.MENU) this.start();
+    else if (this.state === GameState.GAME_OVER) this.restart();
+  }
+
+  _syncMenuOverlay() {
+    if (!this._menuOverlay) return;
+    const show =
+      this.state === GameState.MENU || this.state === GameState.GAME_OVER;
+    this._menuOverlay.style.display = show ? "flex" : "none";
+  }
+
+  _readNicknameForGame() {
+    const raw = (
+      this._nicknameSnapshot ||
+      this._nicknameInput?.value ||
+      ""
+    ).trim();
+    if (raw.length === 0) return NICKNAME.defaultName;
+    return raw.slice(0, NICKNAME.maxLength);
+  }
+
+  _personalBestForHud() {
+    const stored = getStoredBestForNickname(this._sessionNickname);
+    return Math.max(stored, this.score);
   }
 
   start() {
     if (!this.world) return;
+    if (this._nicknameInput) this._nicknameSnapshot = this._nicknameInput.value;
+    this._sessionNickname = this._readNicknameForGame();
     this.state = GameState.PLAYING;
     this.score = 0;
     this._endBodyShot();
@@ -99,6 +210,7 @@ export class GameManager {
     this.player?.dispose();
     this.player = new Player(this.world.scene);
     this.player.reset();
+    this._applyPlayerNickname();
 
     if (this.orbs.length === 0) {
       for (let i = 0; i < ORB.count; i++) {
@@ -107,6 +219,17 @@ export class GameManager {
     }
     this._layoutObstacles();
     this._layoutOrbs();
+  }
+
+  _applyPlayerNickname() {
+    const apply = () => {
+      const name = this._readNicknameForGame();
+      this.player?.setNickname(name);
+    };
+    apply();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(apply);
+    });
   }
 
   // Same obstacle objects every time. Only their positions change in start().
@@ -155,6 +278,8 @@ export class GameManager {
       this.bestScore = this.score;
       localStorage.setItem("orb-best", String(this.bestScore));
     }
+    recordLeaderboardScore(this._sessionNickname, this.score);
+    this._refreshLeaderboardDOM();
   }
 
   /**
@@ -177,6 +302,7 @@ export class GameManager {
         this.onGameOver();
         return;
       }
+      this.player.updateNameLabel();
       this._updateOrbs();
       this._updateBodyShot(dt);
       this.world.updateCamera(this.player, dt);
@@ -333,6 +459,7 @@ export class GameManager {
   }
 
   drawHUD() {
+    this._syncMenuOverlay();
     const p = this.p;
     p.clear();
     switch (this.state) {
@@ -340,10 +467,10 @@ export class GameManager {
         drawStartScreen(p);
         break;
       case GameState.PLAYING:
-        drawPlayingHUD(p, this.score, this.bestScore);
+        drawPlayingHUD(p, this.score, this._personalBestForHud());
         break;
       case GameState.GAME_OVER:
-        drawGameOverScreen(p, this.score, this.bestScore);
+        drawGameOverScreen(p, this.score, this._personalBestForHud());
         break;
       default:
         break;
@@ -363,12 +490,14 @@ export class GameManager {
    * @param {number} keyCode p5 keyCode (13 = Enter, 32 = Space)
    */
   onKeyPressed(key, keyCode) {
-    const activate =
-      keyCode === 13 || // Enter
-      keyCode === 32 || // Space
-      key === " " ||
-      key === "\n";
-    if (!activate) return;
+    const enter = keyCode === 13 || key === "\n";
+    if (!enter) return;
+    const input = this._nicknameInput;
+    const typing = !!(input && document.activeElement === input);
+    if (typing) return;
+    if (this._startButton && document.activeElement === this._startButton)
+      return;
+    if (this._nicknameInput) this._nicknameSnapshot = this._nicknameInput.value;
     if (this.state === GameState.MENU) this.start();
     else if (this.state === GameState.GAME_OVER) this.restart();
   }
