@@ -98,7 +98,16 @@ export class GameManager {
     this._spaceHeld = false;
     /** @param {KeyboardEvent} e */
     this._onKeyDown = (e) => {
-      if (e.code === "Space") this._spaceHeld = true;
+      if (this.state === GameState.PLAYING) {
+        if (e.code === "Space") {
+          e.preventDefault();
+          this._spaceHeld = true;
+        } else if (e.code === "KeyA" && !e.repeat) {
+          e.preventDefault();
+          this._tryFireBodyShot();
+        }
+        return;
+      }
       if (e.code === "KeyA" && !e.repeat) this._tryFireBodyShot();
     };
     /** @param {KeyboardEvent} e */
@@ -225,6 +234,9 @@ export class GameManager {
   start() {
     if (!this.world) return;
     if (this._nicknameInput) this._nicknameSnapshot = this._nicknameInput.value;
+    this._nicknameInput?.blur();
+    this._startButton?.blur();
+    this._spaceHeld = false;
     this._sessionNickname = this._readNicknameForGame();
     this._sessionBestStored = getStoredBestForNickname(this._sessionNickname);
     void getStoredBestForNicknameAsync(this._sessionNickname).then((n) => {
