@@ -1,8 +1,10 @@
+const BASE = import.meta.env.BASE_URL;
+
 export const SFX_URLS = {
-  orbCollect: "/sfx/orb-collect.mp3",
-  bodyShotFire: "/sfx/body-shot-fire.mp3",
-  bodyShotHit: "/sfx/body-shot-hit.mp3",
-  gameOver: "/sfx/game-over.mp3",
+  orbCollect: `${BASE}sfx/orb-collect.mp3`,
+  bodyShotFire: `${BASE}sfx/body-shot-fire.mp3`,
+  bodyShotHit: `${BASE}sfx/body-shot-hit.mp3`,
+  gameOver: `${BASE}sfx/game-over.mp3`,
 };
 
 /** 0 ~ 1 */
