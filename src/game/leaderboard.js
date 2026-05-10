@@ -14,7 +14,7 @@ function loadMap() {
     const data = JSON.parse(raw);
     if (data && typeof data === "object" && !Array.isArray(data)) return data;
   } catch {
-    /* ignore */
+    // ignore
   }
   return {};
 }
@@ -133,10 +133,12 @@ export async function recordLeaderboardScoreAsync(nickname, score) {
   const prev = row ? Number(row.score) : NaN;
   if (Number.isFinite(prev) && n <= prev) return;
 
-  const { error: writeErr } = await supabase.from(TABLE).upsert(
-    { nickname: name, score: n, updated_at: new Date().toISOString() },
-    { onConflict: "nickname" },
-  );
+  const { error: writeErr } = await supabase
+    .from(TABLE)
+    .upsert(
+      { nickname: name, score: n, updated_at: new Date().toISOString() },
+      { onConflict: "nickname" },
+    );
   if (writeErr) {
     console.warn("[leaderboard]", writeErr.message);
     recordLeaderboardScore(nickname, score);
