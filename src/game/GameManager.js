@@ -19,9 +19,11 @@ import {
   drawGameOverScreen,
 } from "../ui/hud.js";
 import {
-  getLeaderboardTop10,
+  getLeaderboardTop10Async,
   getStoredBestForNickname,
-  recordLeaderboardScore,
+  getStoredBestForNicknameAsync,
+  recordLeaderboardScoreAsync,
+  usesRemoteLeaderboard,
 } from "./leaderboard.js";
 import {
   playBodyShotFire,
@@ -79,6 +81,8 @@ export class GameManager {
 
     /** @type {HTMLOListElement | null} */
     this._leaderboardList = null;
+    /** Best score for current session nickname (local + optional remote). */
+    this._sessionBestStored = 0;
 
     this._mouseClientX =
       typeof window !== "undefined" ? window.innerWidth * 0.5 : 0;
@@ -145,14 +149,27 @@ export class GameManager {
         if (this.state === GameState.MENU) this._nicknameInput?.focus();
       });
     }
-    this._refreshLeaderboardDOM();
+    void this._refreshLeaderboardDOM().catch((e) => console.warn(e));
   }
 
-  _refreshLeaderboardDOM() {
+  async _refreshLeaderboardDOM() {
     const list = this._leaderboardList;
     if (!list) return;
     list.replaceChildren();
-    const rows = getLeaderboardTop10();
+    if (usesRemoteLeaderboard()) {
+      const loading = document.createElement("li");
+      loading.className = "leaderboard-empty";
+      loading.textContent = "Loading…";
+      list.appendChild(loading);
+    }
+    let rows;
+    try {
+      rows = await getLeaderboardTop10Async();
+    } catch (e) {
+      console.warn(e);
+      rows = [];
+    }
+    list.replaceChildren();
     if (rows.length === 0) {
       const li = document.createElement("li");
       li.className = "leaderboard-empty";
@@ -202,14 +219,17 @@ export class GameManager {
   }
 
   _personalBestForHud() {
-    const stored = getStoredBestForNickname(this._sessionNickname);
-    return Math.max(stored, this.score);
+    return Math.max(this._sessionBestStored, this.score);
   }
 
   start() {
     if (!this.world) return;
     if (this._nicknameInput) this._nicknameSnapshot = this._nicknameInput.value;
     this._sessionNickname = this._readNicknameForGame();
+    this._sessionBestStored = getStoredBestForNickname(this._sessionNickname);
+    void getStoredBestForNicknameAsync(this._sessionNickname).then((n) => {
+      this._sessionBestStored = n;
+    });
     preloadGameAudio();
     this.state = GameState.PLAYING;
     this.score = 0;
@@ -287,8 +307,15 @@ export class GameManager {
       this.bestScore = this.score;
       localStorage.setItem("orb-best", String(this.bestScore));
     }
-    recordLeaderboardScore(this._sessionNickname, this.score);
-    this._refreshLeaderboardDOM();
+    this._sessionBestStored = Math.max(this._sessionBestStored, this.score);
+    void (async () => {
+      await recordLeaderboardScoreAsync(this._sessionNickname, this.score);
+      this._sessionBestStored = Math.max(
+        this._sessionBestStored,
+        await getStoredBestForNicknameAsync(this._sessionNickname),
+      );
+      await this._refreshLeaderboardDOM();
+    })().catch((e) => console.warn(e));
   }
 
   /**
