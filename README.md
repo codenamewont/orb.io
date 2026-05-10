@@ -9,7 +9,7 @@
 | Email       | leechaewon@kaist.ac.kr                 |
 | Source code | https://github.com/codenamewont/orb.io |
 | Live site   | https://orb-io.vercel.app              |
-| Demo video  | TBD                                    |
+| Demo video  | https://youtu.be/sjQCeS4HBIo           |
 
 ## Screenshots
 
